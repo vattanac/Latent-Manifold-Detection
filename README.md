@@ -6,6 +6,12 @@ Built as a single self-contained HTML file with a modern 2025-style UI: dark gla
 
 ---
 
+## Live Demo
+
+**[https://latent-manifold-detection.netlify.app/](https://latent-manifold-detection.netlify.app/)**
+
+---
+
 ## Quick Start
 
 Open the guide directly in any modern browser:
