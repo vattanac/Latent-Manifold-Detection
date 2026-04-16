@@ -1,0 +1,1433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AI-Generated Image Detection using Latent Manifolds</title>
+<style>
+  :root {
+    --bg-0: #0a0b10;
+    --bg-1: #11131c;
+    --bg-2: #171a26;
+    --bg-3: #1e2230;
+    --border: rgba(255, 255, 255, 0.08);
+    --text-0: #f4f5f8;
+    --text-1: #c9ccd6;
+    --text-2: #8a8fa0;
+    --accent: #7c5cff;
+    --accent-2: #22d3ee;
+    --accent-3: #f472b6;
+    --accent-glow: rgba(124, 92, 255, 0.35);
+    --success: #34d399;
+    --warning: #fbbf24;
+    --danger: #f87171;
+    --code-bg: #0d1017;
+    --radius: 14px;
+    --radius-sm: 8px;
+    --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.5);
+    --font-sans: -apple-system, BlinkMacSystemFont, "Inter", "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+    --font-mono: "SF Mono", "JetBrains Mono", "Fira Code", Menlo, Consolas, monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: var(--font-sans);
+    background: var(--bg-0);
+    color: var(--text-1);
+    line-height: 1.7;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Background decoration */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(800px circle at 15% 10%, rgba(124, 92, 255, 0.12), transparent 40%),
+      radial-gradient(700px circle at 85% 80%, rgba(34, 211, 238, 0.08), transparent 40%),
+      radial-gradient(500px circle at 50% 50%, rgba(244, 114, 182, 0.05), transparent 40%);
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    min-height: 100vh;
+  }
+
+  /* ===== SIDEBAR ===== */
+  .sidebar {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    background: rgba(17, 19, 28, 0.7);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-right: 1px solid var(--border);
+    padding: 28px 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  .sidebar::-webkit-scrollbar { width: 6px; }
+  .sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+
+  .logo {
+    padding: 0 24px 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 20px;
+  }
+
+  .logo-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    display: grid;
+    place-items: center;
+    box-shadow: 0 8px 24px var(--accent-glow);
+    font-size: 20px;
+  }
+
+  .logo-text {
+    font-weight: 700;
+    color: var(--text-0);
+    font-size: 15px;
+    letter-spacing: -0.3px;
+  }
+
+  .logo-text small {
+    display: block;
+    font-weight: 400;
+    color: var(--text-2);
+    font-size: 11px;
+    margin-top: 2px;
+    letter-spacing: 0;
+  }
+
+  .nav-section {
+    padding: 0 12px;
+    margin-bottom: 20px;
+  }
+
+  .nav-title {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-2);
+    padding: 8px 14px;
+    margin-bottom: 4px;
+  }
+
+  .nav-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 14px;
+    color: var(--text-1);
+    text-decoration: none;
+    font-size: 13.5px;
+    border-radius: var(--radius-sm);
+    transition: all 0.2s;
+    position: relative;
+  }
+
+  .nav-link:hover {
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-0);
+  }
+
+  .nav-link.active {
+    background: linear-gradient(135deg, rgba(124, 92, 255, 0.15), rgba(34, 211, 238, 0.08));
+    color: var(--text-0);
+  }
+
+  .nav-link.active::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 20%;
+    bottom: 20%;
+    width: 3px;
+    background: linear-gradient(180deg, var(--accent), var(--accent-2));
+    border-radius: 3px;
+  }
+
+  .nav-num {
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    background: rgba(255,255,255,0.05);
+    display: grid;
+    place-items: center;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-2);
+    flex-shrink: 0;
+  }
+
+  .nav-link.active .nav-num {
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    color: white;
+  }
+
+  /* ===== MAIN CONTENT ===== */
+  .main {
+    padding: 48px 60px 120px;
+    max-width: 1100px;
+  }
+
+  .hero {
+    margin-bottom: 64px;
+    padding-bottom: 40px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    background: rgba(124, 92, 255, 0.1);
+    border: 1px solid rgba(124, 92, 255, 0.3);
+    border-radius: 100px;
+    font-size: 12px;
+    color: var(--accent);
+    font-weight: 500;
+    margin-bottom: 20px;
+  }
+
+  .hero-badge::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    background: var(--accent);
+    border-radius: 50%;
+    box-shadow: 0 0 12px var(--accent);
+  }
+
+  h1 {
+    font-size: 44px;
+    font-weight: 800;
+    color: var(--text-0);
+    letter-spacing: -1.2px;
+    line-height: 1.15;
+    margin-bottom: 18px;
+    background: linear-gradient(135deg, #ffffff 0%, #c9ccd6 60%, #7c5cff 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .hero-sub {
+    font-size: 18px;
+    color: var(--text-1);
+    max-width: 700px;
+    line-height: 1.6;
+  }
+
+  section {
+    margin-bottom: 64px;
+    scroll-margin-top: 24px;
+  }
+
+  section h2 {
+    font-size: 30px;
+    font-weight: 700;
+    color: var(--text-0);
+    margin-bottom: 18px;
+    letter-spacing: -0.6px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  section h2 .sec-num {
+    display: inline-grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    font-size: 14px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    color: white;
+    border-radius: 10px;
+    font-weight: 700;
+    box-shadow: 0 8px 20px var(--accent-glow);
+  }
+
+  section h3 {
+    font-size: 20px;
+    color: var(--text-0);
+    margin: 28px 0 12px;
+    font-weight: 600;
+    letter-spacing: -0.3px;
+  }
+
+  section p {
+    margin-bottom: 14px;
+    color: var(--text-1);
+    font-size: 15.5px;
+  }
+
+  section ul, section ol {
+    margin: 12px 0 18px 20px;
+    color: var(--text-1);
+  }
+
+  section li {
+    margin-bottom: 8px;
+    font-size: 15.5px;
+  }
+
+  strong { color: var(--text-0); font-weight: 600; }
+  em { color: var(--accent-2); font-style: normal; }
+
+  /* Card */
+  .card {
+    background: linear-gradient(180deg, rgba(30, 34, 48, 0.5), rgba(17, 19, 28, 0.5));
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px 28px;
+    margin: 20px 0;
+  }
+
+  .card.accent {
+    border-left: 3px solid var(--accent);
+    background: linear-gradient(90deg, rgba(124, 92, 255, 0.08), rgba(30, 34, 48, 0.3));
+  }
+
+  .card.info {
+    border-left: 3px solid var(--accent-2);
+    background: linear-gradient(90deg, rgba(34, 211, 238, 0.08), rgba(30, 34, 48, 0.3));
+  }
+
+  .card.warn {
+    border-left: 3px solid var(--warning);
+    background: linear-gradient(90deg, rgba(251, 191, 36, 0.08), rgba(30, 34, 48, 0.3));
+  }
+
+  .card.danger {
+    border-left: 3px solid var(--danger);
+    background: linear-gradient(90deg, rgba(248, 113, 113, 0.08), rgba(30, 34, 48, 0.3));
+  }
+
+  .card-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-0);
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .card-title .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+
+  /* Grid */
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin: 20px 0;
+  }
+
+  .grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin: 20px 0;
+  }
+
+  @media (max-width: 900px) {
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+  }
+
+  /* Code */
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    overflow-x: auto;
+    margin: 16px 0;
+    font-family: var(--font-mono);
+    font-size: 13.5px;
+    line-height: 1.7;
+    position: relative;
+  }
+
+  pre::before {
+    content: "";
+    position: absolute;
+    top: 12px;
+    left: 14px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #ff5f57;
+    box-shadow: 16px 0 0 #febc2e, 32px 0 0 #28c840;
+  }
+
+  pre code {
+    display: block;
+    padding-top: 22px;
+    color: #e4e7ef;
+  }
+
+  .k { color: #c792ea; }   /* keyword */
+  .s { color: #c3e88d; }   /* string */
+  .c { color: #676e95; font-style: italic; }  /* comment */
+  .f { color: #82aaff; }   /* function */
+  .n { color: #f78c6c; }   /* number */
+  .v { color: #89ddff; }   /* variable */
+
+  code.inline {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    background: rgba(124, 92, 255, 0.12);
+    color: #c4b5fd;
+    padding: 2px 7px;
+    border-radius: 5px;
+    border: 1px solid rgba(124, 92, 255, 0.2);
+  }
+
+  /* Formula block */
+  .formula {
+    background: linear-gradient(180deg, #0d1017, #070910);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    text-align: center;
+    margin: 20px 0;
+    font-family: "Times New Roman", Times, serif;
+    font-size: 22px;
+    color: var(--text-0);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .formula::before {
+    content: "FORMULA";
+    position: absolute;
+    top: 10px;
+    right: 14px;
+    font-family: var(--font-sans);
+    font-size: 10px;
+    color: var(--text-2);
+    letter-spacing: 2px;
+    font-weight: 600;
+  }
+
+  .formula em {
+    font-style: italic;
+    color: var(--accent);
+  }
+
+  /* Table */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: rgba(30, 34, 48, 0.3);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin: 18px 0;
+    border: 1px solid var(--border);
+  }
+
+  th, td {
+    padding: 14px 18px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    font-size: 14.5px;
+  }
+
+  th {
+    background: rgba(124, 92, 255, 0.08);
+    color: var(--text-0);
+    font-weight: 600;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: rgba(255,255,255,0.02); }
+
+  /* Pipeline steps */
+  .pipeline {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin: 24px 0;
+  }
+
+  @media (max-width: 900px) { .pipeline { grid-template-columns: 1fr 1fr; } }
+
+  .pipe-step {
+    background: linear-gradient(180deg, rgba(30, 34, 48, 0.6), rgba(17, 19, 28, 0.6));
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px;
+    text-align: center;
+    position: relative;
+    transition: transform 0.2s;
+  }
+
+  .pipe-step:hover {
+    transform: translateY(-4px);
+    border-color: rgba(124, 92, 255, 0.4);
+  }
+
+  .pipe-step .num {
+    display: inline-grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    color: white;
+    font-weight: 700;
+    font-size: 13px;
+    margin-bottom: 10px;
+  }
+
+  .pipe-step h4 {
+    color: var(--text-0);
+    margin-bottom: 6px;
+    font-size: 14px;
+  }
+
+  .pipe-step p {
+    color: var(--text-2);
+    font-size: 12.5px;
+    margin: 0;
+  }
+
+  /* Method comparison cards */
+  .method-card {
+    background: linear-gradient(180deg, rgba(30, 34, 48, 0.5), rgba(17, 19, 28, 0.5));
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    transition: all 0.3s;
+  }
+
+  .method-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+  }
+
+  .method-card h4 {
+    color: var(--text-0);
+    margin-bottom: 8px;
+    font-size: 15px;
+  }
+
+  .method-card p {
+    color: var(--text-2);
+    font-size: 13.5px;
+    margin: 0;
+  }
+
+  .tag {
+    display: inline-block;
+    font-size: 11px;
+    padding: 3px 9px;
+    border-radius: 100px;
+    background: rgba(124, 92, 255, 0.15);
+    color: #c4b5fd;
+    margin-bottom: 10px;
+    font-weight: 500;
+  }
+
+  .tag.cyan { background: rgba(34, 211, 238, 0.15); color: #7dd3fc; }
+  .tag.pink { background: rgba(244, 114, 182, 0.15); color: #f9a8d4; }
+  .tag.green { background: rgba(52, 211, 153, 0.15); color: #6ee7b7; }
+  .tag.amber { background: rgba(251, 191, 36, 0.15); color: #fcd34d; }
+
+  /* Visual diagram */
+  .diagram {
+    background: radial-gradient(ellipse at center, rgba(124, 92, 255, 0.06), transparent 70%);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 40px 20px;
+    margin: 24px 0;
+    text-align: center;
+  }
+
+  .flow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .flow-box {
+    padding: 14px 22px;
+    background: linear-gradient(135deg, rgba(124, 92, 255, 0.2), rgba(34, 211, 238, 0.1));
+    border: 1px solid rgba(124, 92, 255, 0.4);
+    border-radius: 10px;
+    color: var(--text-0);
+    font-weight: 600;
+    font-size: 14px;
+  }
+
+  .flow-box.real { background: linear-gradient(135deg, rgba(248, 113, 113, 0.2), rgba(251, 191, 36, 0.1)); border-color: rgba(248, 113, 113, 0.4); }
+  .flow-box.fake { background: linear-gradient(135deg, rgba(52, 211, 153, 0.2), rgba(34, 211, 238, 0.1)); border-color: rgba(52, 211, 153, 0.4); }
+
+  .flow-arrow { color: var(--accent); font-size: 20px; font-weight: 700; }
+
+  footer {
+    margin-top: 80px;
+    padding-top: 30px;
+    border-top: 1px solid var(--border);
+    text-align: center;
+    color: var(--text-2);
+    font-size: 13px;
+  }
+
+  .kbd {
+    display: inline-block;
+    padding: 2px 7px;
+    font-size: 11px;
+    font-family: var(--font-mono);
+    background: rgba(255,255,255,0.08);
+    border: 1px solid var(--border);
+    border-bottom-width: 2px;
+    border-radius: 4px;
+    color: var(--text-1);
+  }
+
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; }
+    .sidebar { position: relative; height: auto; border-right: none; border-bottom: 1px solid var(--border); }
+    .main { padding: 32px 24px; }
+    h1 { font-size: 32px; }
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+  <!-- ===== SIDEBAR ===== -->
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-icon">🧬</div>
+      <div class="logo-text">
+        Latent Manifold Detection
+        <small>Complete Technical Guide</small>
+      </div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-title">Foundations</div>
+      <a href="#overview" class="nav-link active"><span class="nav-num">1</span>Overview</a>
+      <a href="#autoencoder" class="nav-link"><span class="nav-num">2</span>Autoencoders</a>
+      <a href="#diffusion" class="nav-link"><span class="nav-num">3</span>Latent Diffusion</a>
+      <a href="#manifold" class="nav-link"><span class="nav-num">4</span>The Manifold</a>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-title">Core Theory</div>
+      <a href="#asymmetry" class="nav-link"><span class="nav-num">5</span>The Asymmetry</a>
+      <a href="#math" class="nav-link"><span class="nav-num">6</span>Mathematical Formulation</a>
+      <a href="#pipeline" class="nav-link"><span class="nav-num">7</span>Detection Pipeline</a>
+      <a href="#metrics" class="nav-link"><span class="nav-num">8</span>Distance Metrics</a>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-title">Signal Analysis</div>
+      <a href="#complex" class="nav-link"><span class="nav-num">9</span>Complex Regions</a>
+      <a href="#frequency" class="nav-link"><span class="nav-num">10</span>Frequency Domain</a>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-title">Practice</div>
+      <a href="#code" class="nav-link"><span class="nav-num">11</span>Code Example</a>
+      <a href="#calibration" class="nav-link"><span class="nav-num">12</span>Calibration</a>
+      <a href="#aeroblade" class="nav-link"><span class="nav-num">13</span>AEROBLADE Paper</a>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-title">Limitations</div>
+      <a href="#failures" class="nav-link"><span class="nav-num">14</span>Failure Cases</a>
+      <a href="#adversarial" class="nav-link"><span class="nav-num">15</span>Adversarial Attacks</a>
+      <a href="#alternatives" class="nav-link"><span class="nav-num">16</span>Alternative Methods</a>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-title">Beyond</div>
+      <a href="#applications" class="nav-link"><span class="nav-num">17</span>Applications</a>
+      <a href="#future" class="nav-link"><span class="nav-num">18</span>Future Directions</a>
+      <a href="#glossary" class="nav-link"><span class="nav-num">19</span>Glossary</a>
+    </div>
+  </aside>
+
+  <!-- ===== MAIN ===== -->
+  <main class="main">
+    <div class="hero">
+      <div class="hero-badge">Deep Technical Guide · Updated 2026</div>
+      <h1>AI-Generated Image Detection via Latent Manifolds</h1>
+      <p class="hero-sub">
+        A complete, end-to-end explanation of how latent autoencoders — the silent workhorses
+        behind Stable Diffusion — can be repurposed as training-free detectors that separate
+        real photographs from AI-generated images. From intuition to math, code, and caveats.
+      </p>
+    </div>
+
+    <!-- 1 -->
+    <section id="overview">
+      <h2><span class="sec-num">1</span>Overview: The Big Idea</h2>
+      <p>
+        Latent diffusion models such as Stable Diffusion generate images by denoising inside a
+        compressed space called the <strong>latent space</strong>, then passing the clean latent
+        through a <strong>decoder</strong> to produce pixels. The autoencoder that defines this
+        latent space unintentionally leaks information that can be used to tell whether an image
+        came from the model or from a real camera.
+      </p>
+
+      <div class="card accent">
+        <div class="card-title"><span class="dot"></span>Core Insight</div>
+        <p style="margin:0">
+          When you encode an image and decode it again, AI-generated images come back
+          <strong>nearly unchanged</strong>, while real photographs show a measurable
+          <strong>reconstruction error</strong>. That single number is the detector.
+        </p>
+      </div>
+
+      <p>
+        The method is elegant because no classifier is trained from scratch — you reuse the
+        autoencoder of the generator itself. It exploits a structural property: generated images
+        <em>live on</em> the manifold the decoder can produce; real images only <em>approximate</em>
+        that manifold.
+      </p>
+    </section>
+
+    <!-- 2 -->
+    <section id="autoencoder">
+      <h2><span class="sec-num">2</span>Autoencoders: The Compression Machine</h2>
+      <p>
+        An autoencoder is a pair of neural networks trained together to compress and reconstruct
+        data. The <strong>encoder</strong> <code class="inline">E</code> maps an image
+        <code class="inline">x</code> to a small latent vector <code class="inline">z</code>, and
+        the <strong>decoder</strong> <code class="inline">D</code> maps <code class="inline">z</code>
+        back to a pixel image <code class="inline">x̂</code>.
+      </p>
+
+      <div class="diagram">
+        <div class="flow">
+          <div class="flow-box real">Image x (512×512×3)</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-box">Encoder E</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-box">Latent z (64×64×4)</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-box">Decoder D</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-box fake">Reconstruction x̂</div>
+        </div>
+      </div>
+
+      <h3>Why it's lossy</h3>
+      <p>
+        Stable Diffusion's VAE reduces 786,432 pixel values down to roughly 16,384 latent values —
+        a <strong>48× compression</strong>. This forces the network to learn a compact
+        representation that keeps semantic content but discards fine high-frequency noise.
+        Reconstruction is never pixel-perfect for arbitrary images.
+      </p>
+
+      <div class="grid-2">
+        <div class="card info">
+          <div class="card-title"><span class="dot" style="background:var(--accent-2)"></span>Encoder E(x) → z</div>
+          <p style="margin:0">A CNN that progressively downsamples and extracts semantic features into a low-dimensional code.</p>
+        </div>
+        <div class="card info">
+          <div class="card-title"><span class="dot" style="background:var(--accent-2)"></span>Decoder D(z) → x̂</div>
+          <p style="margin:0">A CNN that upsamples the latent code and hallucinates plausible high-frequency detail.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3 -->
+    <section id="diffusion">
+      <h2><span class="sec-num">3</span>Latent Diffusion: Generation in the Small Space</h2>
+      <p>
+        Classical diffusion models operate directly on pixels, which is computationally brutal.
+        Latent Diffusion Models (LDMs) solve this by training a diffusion model inside the
+        autoencoder's latent space.
+      </p>
+
+      <h3>The generation pipeline</h3>
+      <div class="pipeline">
+        <div class="pipe-step">
+          <div class="num">1</div>
+          <h4>Start with Noise</h4>
+          <p>Sample random Gaussian noise <code class="inline">z_T</code> in latent space.</p>
+        </div>
+        <div class="pipe-step">
+          <div class="num">2</div>
+          <h4>Iterative Denoising</h4>
+          <p>A U-Net predicts and removes noise across T timesteps, guided by a text prompt.</p>
+        </div>
+        <div class="pipe-step">
+          <div class="num">3</div>
+          <h4>Clean Latent</h4>
+          <p>After denoising you have <code class="inline">z_0</code>, a latent on the manifold.</p>
+        </div>
+        <div class="pipe-step">
+          <div class="num">4</div>
+          <h4>Decode to Pixels</h4>
+          <p>Pass <code class="inline">z_0</code> through decoder D to produce the final image.</p>
+        </div>
+      </div>
+
+      <div class="card accent">
+        <div class="card-title"><span class="dot"></span>Key Fact</div>
+        <p style="margin:0">
+          Every AI-generated image you've ever seen from Stable Diffusion, SDXL, FLUX, or similar
+          models is <strong>the literal output of their decoder D</strong>. It was never a real
+          photograph; it was born in the decoder's manifold.
+        </p>
+      </div>
+    </section>
+
+    <!-- 4 -->
+    <section id="manifold">
+      <h2><span class="sec-num">4</span>The Manifold: A Curved World of Images</h2>
+      <p>
+        A manifold is a curved, lower-dimensional surface embedded in a higher-dimensional space.
+        The clearest analogy: the surface of the Earth is a 2D manifold living in 3D space.
+      </p>
+
+      <h3>The autoencoder manifold</h3>
+      <p>
+        The set of all images the decoder D can produce forms a manifold inside pixel space. Pixel
+        space contains every possible 512×512 image (astronomically huge), but the manifold is a
+        tiny curved sliver through that space — the region of "images the decoder is able to draw."
+      </p>
+
+      <div class="card info">
+        <div class="card-title"><span class="dot" style="background:var(--accent-2)"></span>Intuition</div>
+        <p style="margin:0">
+          Imagine a warehouse with one shelf for every possible image. 99.999% of shelves hold pure
+          random static. The manifold is a <em>thin glowing thread</em> winding through the
+          warehouse, and every shelf it touches contains a coherent image: a cat, a sunset, a face.
+        </p>
+      </div>
+    </section>
+
+    <!-- 5 -->
+    <section id="asymmetry">
+      <h2><span class="sec-num">5</span>The Asymmetry That Makes Detection Possible</h2>
+      <p>
+        Here is the crucial observation that powers the entire method:
+      </p>
+
+      <div class="grid-2">
+        <div class="card">
+          <span class="tag green">Generated Image</span>
+          <h4 style="color:var(--text-0); margin-bottom:10px; font-size:17px;">Lives ON the manifold</h4>
+          <p style="margin:0">
+            It was produced by D, so by definition it is on the surface D can reach. Passing it
+            through E then D again returns it essentially unchanged. Reconstruction error ≈ 0.
+          </p>
+        </div>
+        <div class="card">
+          <span class="tag pink">Real Photograph</span>
+          <h4 style="color:var(--text-0); margin-bottom:10px; font-size:17px;">Lives OFF the manifold</h4>
+          <p style="margin:0">
+            Real cameras capture high-frequency textures (fur, foliage, sensor noise) the decoder
+            can't reproduce. The encoder projects it onto the <em>nearest</em> manifold point,
+            losing information in the process. Reconstruction error is large.
+          </p>
+        </div>
+      </div>
+
+      <h3>Visual summary</h3>
+      <div class="diagram">
+        <p style="font-size:15px; color:var(--text-1); margin-bottom:18px;">
+          Imagine the manifold as a curved sheet.
+        </p>
+        <div style="font-family:var(--font-mono); line-height:2; color:var(--text-1); font-size:14px;">
+          🔴 Real image floats above sheet &nbsp;→&nbsp; encode/decode &nbsp;→&nbsp; ⚫ drops onto sheet (distance ε is LARGE)<br>
+          ⚫ Generated image sits on sheet &nbsp;&nbsp;→&nbsp; encode/decode &nbsp;→&nbsp; ⚫ stays in place (distance ε is TINY)
+        </div>
+      </div>
+    </section>
+
+    <!-- 6 -->
+    <section id="math">
+      <h2><span class="sec-num">6</span>Mathematical Formulation</h2>
+      <p>
+        Let <code class="inline">E(·)</code> be the encoder, <code class="inline">D(·)</code> be
+        the decoder, and <code class="inline">d(·,·)</code> a distance metric on images. For an
+        input image <code class="inline">x</code>, the detection score is:
+      </p>
+
+      <div class="formula">
+        S(<em>x</em>) = d(<em>x</em>, D(E(<em>x</em>)))
+      </div>
+
+      <p>The classification rule is threshold-based:</p>
+
+      <div class="formula" style="font-size:18px;">
+        classify(<em>x</em>) =
+        { &nbsp; GENERATED &nbsp; if S(<em>x</em>) &lt; τ &nbsp;
+        ; &nbsp; REAL &nbsp; if S(<em>x</em>) ≥ τ &nbsp; }
+      </div>
+
+      <h3>Why it works mathematically</h3>
+      <p>
+        The decoder D has finite capacity and was trained to minimize reconstruction loss on its
+        training distribution. The image of D, <code class="inline">M = { D(z) : z ∈ Z }</code>,
+        is a compact manifold. For any <code class="inline">x ∈ M</code>,
+        <code class="inline">D(E(x)) ≈ x</code>. For <code class="inline">x ∉ M</code>,
+        <code class="inline">D(E(x)) ≈ Π_M(x)</code> — the projection of x onto M — and the
+        distance <code class="inline">d(x, Π_M(x))</code> is strictly positive.
+      </p>
+
+      <div class="card warn">
+        <div class="card-title"><span class="dot" style="background:var(--warning)"></span>Caveat</div>
+        <p style="margin:0">
+          Real autoencoders are not perfect projectors. They're trained to minimize MSE on a
+          specific training set, which biases their behavior. This introduces calibration noise and
+          is one reason detection thresholds need empirical tuning.
+        </p>
+      </div>
+    </section>
+
+    <!-- 7 -->
+    <section id="pipeline">
+      <h2><span class="sec-num">7</span>The Full Detection Pipeline</h2>
+      <div class="pipeline">
+        <div class="pipe-step">
+          <div class="num">1</div>
+          <h4>Load Image</h4>
+          <p>Read the suspect image, resize to the autoencoder's native resolution (typically 512×512).</p>
+        </div>
+        <div class="pipe-step">
+          <div class="num">2</div>
+          <h4>Normalize</h4>
+          <p>Convert pixels to [-1, 1] or [0, 1] depending on the VAE's expected input range.</p>
+        </div>
+        <div class="pipe-step">
+          <div class="num">3</div>
+          <h4>Encode</h4>
+          <p>Pass through E to obtain latent z (for VAEs, use the distribution mean).</p>
+        </div>
+        <div class="pipe-step">
+          <div class="num">4</div>
+          <h4>Decode</h4>
+          <p>Pass z through D to get reconstruction x̂.</p>
+        </div>
+        <div class="pipe-step">
+          <div class="num">5</div>
+          <h4>Measure Error</h4>
+          <p>Compute d(x, x̂) with your chosen metric (L1, LPIPS, etc.).</p>
+        </div>
+        <div class="pipe-step">
+          <div class="num">6</div>
+          <h4>Compare to τ</h4>
+          <p>If error &lt; threshold → generated; else → real.</p>
+        </div>
+        <div class="pipe-step">
+          <div class="num">7</div>
+          <h4>Aggregate (optional)</h4>
+          <p>Average scores over multiple autoencoders for robustness.</p>
+        </div>
+        <div class="pipe-step">
+          <div class="num">8</div>
+          <h4>Output</h4>
+          <p>Return classification plus confidence score for downstream use.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 8 -->
+    <section id="metrics">
+      <h2><span class="sec-num">8</span>Distance Metrics: Choosing the Right Ruler</h2>
+      <p>
+        The choice of distance metric <code class="inline">d</code> dramatically affects detection
+        accuracy. Here are the main options:
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>Metric</th>
+            <th>Formula / Idea</th>
+            <th>Pros</th>
+            <th>Cons</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>MSE / L2</strong></td>
+            <td>Mean squared pixel difference</td>
+            <td>Simple, fast, differentiable</td>
+            <td>Sensitive to tiny shifts; doesn't match perception</td>
+          </tr>
+          <tr>
+            <td><strong>MAE / L1</strong></td>
+            <td>Mean absolute pixel difference</td>
+            <td>Robust to outliers</td>
+            <td>Still pixel-level only</td>
+          </tr>
+          <tr>
+            <td><strong>LPIPS</strong></td>
+            <td>Learned perceptual distance using VGG/AlexNet features</td>
+            <td>Correlates with human perception</td>
+            <td>Needs extra network, slower</td>
+          </tr>
+          <tr>
+            <td><strong>SSIM</strong></td>
+            <td>Structural similarity of luminance, contrast, structure</td>
+            <td>Standard in image quality</td>
+            <td>Less discriminative here</td>
+          </tr>
+          <tr>
+            <td><strong>DreamSim</strong></td>
+            <td>Foundation-model-based perceptual metric</td>
+            <td>State-of-the-art perceptual match</td>
+            <td>Very heavy to compute</td>
+          </tr>
+          <tr>
+            <td><strong>DISTS</strong></td>
+            <td>Deep image structure and texture similarity</td>
+            <td>Texture-aware; great for photos</td>
+            <td>Moderate compute cost</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="card info">
+        <div class="card-title"><span class="dot" style="background:var(--accent-2)"></span>Empirical Note</div>
+        <p style="margin:0">
+          The AEROBLADE paper found <strong>LPIPS</strong> provides the best trade-off between
+          detection accuracy and cost. L2 works surprisingly well as a baseline but misses
+          perceptually similar reconstructions that are pixel-shifted.
+        </p>
+      </div>
+    </section>
+
+    <!-- 9 -->
+    <section id="complex">
+      <h2><span class="sec-num">9</span>Where Errors Show Up: Complex Regions</h2>
+      <p>
+        The reconstruction error on real images is <strong>not evenly distributed</strong>. It
+        concentrates in regions that contain high-frequency content — the kinds of details the
+        decoder's finite capacity can't encode.
+      </p>
+
+      <div class="grid-3">
+        <div class="method-card">
+          <span class="tag">High error</span>
+          <h4>Hair and Fur</h4>
+          <p>Thousands of thin, overlapping strands with sub-pixel variation.</p>
+        </div>
+        <div class="method-card">
+          <span class="tag">High error</span>
+          <h4>Foliage</h4>
+          <p>Dense, irregular leaf textures with complex lighting.</p>
+        </div>
+        <div class="method-card">
+          <span class="tag">High error</span>
+          <h4>Text in Images</h4>
+          <p>Fine letter shapes with sharp high-frequency edges.</p>
+        </div>
+        <div class="method-card">
+          <span class="tag">High error</span>
+          <h4>Skin Pores & Texture</h4>
+          <p>Micro-structure that is essential to realism but hard to compress.</p>
+        </div>
+        <div class="method-card">
+          <span class="tag">High error</span>
+          <h4>Textiles</h4>
+          <p>Woven fabric patterns; fine repetitive texture.</p>
+        </div>
+        <div class="method-card">
+          <span class="tag green">Low error</span>
+          <h4>Skies & Gradients</h4>
+          <p>Smooth regions reconstruct well for both real and fake — not useful as signal.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 10 -->
+    <section id="frequency">
+      <h2><span class="sec-num">10</span>The Frequency-Domain Perspective</h2>
+      <p>
+        The reconstruction error residual <code class="inline">r = x − D(E(x))</code> is
+        dominated by high-frequency content. Transforming this residual with a <strong>Discrete
+        Cosine Transform (DCT)</strong> or <strong>Fast Fourier Transform (FFT)</strong> reveals
+        a characteristic "high-pass filter" signature for real images.
+      </p>
+      <p>
+        Combining the spatial reconstruction error with a frequency-domain analysis of the
+        residual often pushes detection accuracy several points higher, especially on images that
+        have been JPEG-compressed or resized.
+      </p>
+      <div class="card accent">
+        <div class="card-title"><span class="dot"></span>Research Connection</div>
+        <p style="margin:0">
+          Frequency-aware variants have been proposed in FreqDetect and FourierDetect. They use
+          the same encoder/decoder backbone but evaluate <code class="inline">‖FFT(x − D(E(x)))‖</code>
+          as the score.
+        </p>
+      </div>
+    </section>
+
+    <!-- 11 -->
+    <section id="code">
+      <h2><span class="sec-num">11</span>Hands-On: Code Example</h2>
+      <p>
+        Here's a minimal working example using Stable Diffusion's VAE through HuggingFace Diffusers.
+        This runs on any machine with PyTorch and a modest GPU.
+      </p>
+      <pre><code><span class="c"># pip install diffusers torch torchvision lpips pillow</span>
+<span class="k">import</span> torch
+<span class="k">from</span> diffusers <span class="k">import</span> AutoencoderKL
+<span class="k">from</span> torchvision <span class="k">import</span> transforms
+<span class="k">from</span> PIL <span class="k">import</span> Image
+<span class="k">import</span> lpips
+
+<span class="c"># 1. Load Stable Diffusion's VAE (the autoencoder)</span>
+vae = AutoencoderKL.<span class="f">from_pretrained</span>(
+    <span class="s">"stabilityai/sd-vae-ft-mse"</span>
+).<span class="f">to</span>(<span class="s">"cuda"</span>).<span class="f">eval</span>()
+
+<span class="c"># 2. Image preprocessing: resize, to tensor, normalize to [-1, 1]</span>
+preprocess = transforms.<span class="f">Compose</span>([
+    transforms.<span class="f">Resize</span>(<span class="n">512</span>),
+    transforms.<span class="f">CenterCrop</span>(<span class="n">512</span>),
+    transforms.<span class="f">ToTensor</span>(),
+    transforms.<span class="f">Normalize</span>([<span class="n">0.5</span>]*<span class="n">3</span>, [<span class="n">0.5</span>]*<span class="n">3</span>),
+])
+
+<span class="c"># 3. Perceptual metric</span>
+lpips_fn = lpips.<span class="f">LPIPS</span>(net=<span class="s">"vgg"</span>).<span class="f">to</span>(<span class="s">"cuda"</span>)
+
+<span class="k">def</span> <span class="f">reconstruction_score</span>(image_path):
+    img = Image.<span class="f">open</span>(image_path).<span class="f">convert</span>(<span class="s">"RGB"</span>)
+    x = <span class="f">preprocess</span>(img).<span class="f">unsqueeze</span>(<span class="n">0</span>).<span class="f">to</span>(<span class="s">"cuda"</span>)
+
+    <span class="k">with</span> torch.<span class="f">no_grad</span>():
+        <span class="c"># Encode to latent, decode back to pixels</span>
+        z = vae.<span class="f">encode</span>(x).latent_dist.mean
+        x_hat = vae.<span class="f">decode</span>(z).sample
+
+        <span class="c"># LPIPS perceptual distance</span>
+        score = <span class="f">lpips_fn</span>(x, x_hat).<span class="f">item</span>()
+    <span class="k">return</span> score
+
+<span class="c"># 4. Classify</span>
+THRESHOLD = <span class="n">0.18</span>   <span class="c"># empirically calibrated</span>
+score = <span class="f">reconstruction_score</span>(<span class="s">"suspect.jpg"</span>)
+label = <span class="s">"GENERATED"</span> <span class="k">if</span> score &lt; THRESHOLD <span class="k">else</span> <span class="s">"REAL"</span>
+<span class="f">print</span>(<span class="s">f"Score={score:.4f}  →  {label}"</span>)</code></pre>
+      <p>
+        On a typical dataset, you'd expect generated images to score around 0.05–0.12 and real
+        photos to score around 0.20–0.40, giving comfortable separation.
+      </p>
+    </section>
+
+    <!-- 12 -->
+    <section id="calibration">
+      <h2><span class="sec-num">12</span>Calibration & Threshold Selection</h2>
+      <p>
+        Choosing the threshold τ is not arbitrary. You need a labeled validation set and you need
+        to decide which type of error matters most.
+      </p>
+
+      <h3>ROC analysis</h3>
+      <p>
+        Plot true-positive rate vs false-positive rate across all possible thresholds. The
+        <strong>AUC</strong> (area under the curve) summarizes overall discriminability. Published
+        latent-manifold detectors achieve AUC of 0.95+ on same-generator datasets.
+      </p>
+
+      <h3>Asymmetric costs</h3>
+      <div class="grid-2">
+        <div class="card warn">
+          <div class="card-title"><span class="dot" style="background:var(--warning)"></span>False Positive</div>
+          <p style="margin:0">
+            Calling a <strong>real photo</strong> AI-generated. Bad for journalism, court evidence,
+            or victims of misinformation accusations. Usually the more costly error.
+          </p>
+        </div>
+        <div class="card danger">
+          <div class="card-title"><span class="dot" style="background:var(--danger)"></span>False Negative</div>
+          <p style="margin:0">
+            Calling an <strong>AI image</strong> real. Dangerous for deepfake detection and content
+            moderation where fakes must be caught.
+          </p>
+        </div>
+      </div>
+      <p>
+        In practice, pick τ on a held-out set, report performance per generator family, and
+        consider an "uncertain" band between two thresholds where you defer to a human reviewer.
+      </p>
+    </section>
+
+    <!-- 13 -->
+    <section id="aeroblade">
+      <h2><span class="sec-num">13</span>AEROBLADE & Historical Context</h2>
+      <p>
+        The canonical reference for this technique is <strong>AEROBLADE: Training-Free Detection
+        of Latent Diffusion Images Using Autoencoder Reconstruction Error</strong> by Ricker,
+        Lukovnikov, and Fischer, presented at <strong>CVPR 2024</strong>.
+      </p>
+
+      <div class="card accent">
+        <div class="card-title"><span class="dot"></span>Key Contributions of AEROBLADE</div>
+        <ul style="margin:6px 0 0 18px;">
+          <li><strong>Training-free:</strong> uses the generator's own autoencoder — no detection classifier to train.</li>
+          <li><strong>Multi-AE scoring:</strong> averages reconstruction error across several autoencoders (SD 1.5, SD 2.1, SDXL) for robustness.</li>
+          <li><strong>LPIPS as metric:</strong> demonstrated empirically that perceptual distance works best.</li>
+          <li><strong>Strong baseline:</strong> outperforms many trained classifiers on zero-shot detection of SD-family images.</li>
+        </ul>
+      </div>
+
+      <h3>Predecessors and parallel work</h3>
+      <p>
+        Related ideas appear in <strong>DIRE</strong> (Diffusion Reconstruction Error, Wang et al.,
+        ICCV 2023) which inverts the diffusion process itself, and <strong>SeDID</strong> (Single
+        Step Diffusion-based Image Detection). The latent-manifold approach is distinguished by
+        its simplicity — a single encode/decode pass is all that's needed.
+      </p>
+    </section>
+
+    <!-- 14 -->
+    <section id="failures">
+      <h2><span class="sec-num">14</span>Failure Cases & Real-World Limitations</h2>
+      <div class="grid-2">
+        <div class="card warn">
+          <div class="card-title"><span class="dot" style="background:var(--warning)"></span>Cross-Model Generalization</div>
+          <p style="margin:0">
+            An SD 1.5 VAE works well on SD 1.5 images but is weaker on Midjourney, DALL·E 3, FLUX,
+            or Imagen because each model uses a different autoencoder. You need to test with the
+            matching VAE or average across many.
+          </p>
+        </div>
+        <div class="card warn">
+          <div class="card-title"><span class="dot" style="background:var(--warning)"></span>Compression & Resizing</div>
+          <p style="margin:0">
+            JPEG compression, downsampling, and smartphone image pipelines strip high-frequency
+            content from real photos, making them <em>look more manifold-friendly</em>. This
+            shrinks the detection gap.
+          </p>
+        </div>
+        <div class="card warn">
+          <div class="card-title"><span class="dot" style="background:var(--warning)"></span>Inpainting & Img2Img</div>
+          <p style="margin:0">
+            Hybrid images (real photo with some AI-regenerated regions) produce mixed scores. Local
+            patch-level analysis helps but the overall score can be ambiguous.
+          </p>
+        </div>
+        <div class="card warn">
+          <div class="card-title"><span class="dot" style="background:var(--warning)"></span>Post-Generation Editing</div>
+          <p style="margin:0">
+            If the AI image is later edited in Photoshop, upscaled with a different model, or
+            printed and re-photographed, it drifts off the manifold and may fool the detector.
+          </p>
+        </div>
+        <div class="card warn">
+          <div class="card-title"><span class="dot" style="background:var(--warning)"></span>Pixel-Space Diffusion</div>
+          <p style="margin:0">
+            Models that don't use a latent VAE (pixel-space diffusion, GANs, autoregressive image
+            models) produce outputs that aren't on any VAE's manifold. This detector misses them.
+          </p>
+        </div>
+        <div class="card warn">
+          <div class="card-title"><span class="dot" style="background:var(--warning)"></span>Distribution Shift</div>
+          <p style="margin:0">
+            Unusual real photos (very low light, extreme bokeh, infrared) can have reconstruction
+            errors different from typical photos, shifting calibrated thresholds.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 15 -->
+    <section id="adversarial">
+      <h2><span class="sec-num">15</span>Adversarial Attacks</h2>
+      <p>
+        Any detector can be attacked, and this one is no exception. Because the score is
+        differentiable end-to-end (E and D are neural nets), an attacker with white-box access can
+        run gradient ascent:
+      </p>
+      <div class="formula" style="font-size:18px;">
+        <em>x</em><sub>adv</sub> = <em>x</em><sub>gen</sub> + <em>argmax</em><sub>δ</sub> &nbsp; d(<em>x</em>+<em>δ</em>, D(E(<em>x</em>+<em>δ</em>)))
+        &nbsp; subject to &nbsp; ‖<em>δ</em>‖ ≤ <em>ε</em>
+      </div>
+      <p>
+        A small perturbation δ, imperceptible to humans, can push a generated image <em>off</em>
+        the manifold, making it score like a real photo. Defenses include:
+      </p>
+      <ul>
+        <li><strong>Input transformations:</strong> randomized resizing, JPEG compression before scoring.</li>
+        <li><strong>Ensemble autoencoders:</strong> adversarial perturbation against one VAE rarely transfers to another.</li>
+        <li><strong>Certified defenses:</strong> randomized smoothing gives provable robustness at a cost of accuracy.</li>
+      </ul>
+    </section>
+
+    <!-- 16 -->
+    <section id="alternatives">
+      <h2><span class="sec-num">16</span>Alternative Detection Methods</h2>
+      <p>Latent-manifold detection is one tool in a larger toolbox. Here are its competitors:</p>
+
+      <div class="grid-3">
+        <div class="method-card">
+          <span class="tag cyan">Spectral</span>
+          <h4>Frequency Analysis</h4>
+          <p>GAN and diffusion artifacts show up as periodic patterns in the DCT/FFT spectrum.</p>
+        </div>
+        <div class="method-card">
+          <span class="tag pink">Learned</span>
+          <h4>CNN Classifiers</h4>
+          <p>Wang et al. CNNDetect and similar models train a supervised classifier on real vs fake.</p>
+        </div>
+        <div class="method-card">
+          <span class="tag green">Foundation</span>
+          <h4>CLIP-Based</h4>
+          <p>Extract CLIP features and train a light classifier on top. Strong generalization.</p>
+        </div>
+        <div class="method-card">
+          <span class="tag amber">Inverse</span>
+          <h4>DIRE</h4>
+          <p>Invert the diffusion process; measures distance between original and re-noised image.</p>
+        </div>
+        <div class="method-card">
+          <span class="tag">Watermark</span>
+          <h4>Active Watermarking</h4>
+          <p>Embed an invisible signal at generation time; later detect it. Requires cooperation.</p>
+        </div>
+        <div class="method-card">
+          <span class="tag cyan">Metadata</span>
+          <h4>C2PA & Provenance</h4>
+          <p>Cryptographic provenance chain attached at capture/generation. Not a forensics tool.</p>
+        </div>
+      </div>
+
+      <p>
+        The strongest real-world systems <strong>combine multiple signals</strong>: a
+        latent-manifold score, a CLIP-based classifier, and a frequency check. No single detector
+        dominates in all settings.
+      </p>
+    </section>
+
+    <!-- 17 -->
+    <section id="applications">
+      <h2><span class="sec-num">17</span>Real-World Applications</h2>
+      <div class="grid-2">
+        <div class="card info">
+          <div class="card-title"><span class="dot" style="background:var(--accent-2)"></span>Journalism</div>
+          <p style="margin:0">Verifying authenticity of photos submitted to news outlets.</p>
+        </div>
+        <div class="card info">
+          <div class="card-title"><span class="dot" style="background:var(--accent-2)"></span>Content Moderation</div>
+          <p style="margin:0">Flagging AI-generated content on social platforms for labeling or review.</p>
+        </div>
+        <div class="card info">
+          <div class="card-title"><span class="dot" style="background:var(--accent-2)"></span>Academic Integrity</div>
+          <p style="margin:0">Detecting fabricated figures or images in research papers.</p>
+        </div>
+        <div class="card info">
+          <div class="card-title"><span class="dot" style="background:var(--accent-2)"></span>Legal & Forensics</div>
+          <p style="margin:0">Providing quantitative evidence in court about image provenance.</p>
+        </div>
+        <div class="card info">
+          <div class="card-title"><span class="dot" style="background:var(--accent-2)"></span>Dataset Hygiene</div>
+          <p style="margin:0">Cleaning web-scraped training sets to avoid feedback loops where models train on their own outputs.</p>
+        </div>
+        <div class="card info">
+          <div class="card-title"><span class="dot" style="background:var(--accent-2)"></span>Insurance & KYC</div>
+          <p style="margin:0">Detecting AI-generated ID photos or claim documentation.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 18 -->
+    <section id="future">
+      <h2><span class="sec-num">18</span>Future Directions</h2>
+      <ul>
+        <li><strong>Universal autoencoders:</strong> training a single VAE that captures the manifold of many generators, enabling cross-model detection.</li>
+        <li><strong>Patch-level scoring:</strong> producing a heatmap of reconstruction error to localize AI-generated regions inside hybrid images.</li>
+        <li><strong>Video extension:</strong> extending reconstruction-error scoring to latent video diffusion models with temporal consistency terms.</li>
+        <li><strong>Robust training:</strong> fine-tuning the autoencoder adversarially so it <em>fails</em> on real images but <em>succeeds</em> on fake ones, sharpening the gap.</li>
+        <li><strong>Self-supervised provenance:</strong> combining manifold detection with learned watermarks and C2PA metadata in one pipeline.</li>
+        <li><strong>Explainable detection:</strong> showing users <em>why</em> a verdict was reached — which regions triggered the score.</li>
+      </ul>
+    </section>
+
+    <!-- 19 -->
+    <section id="glossary">
+      <h2><span class="sec-num">19</span>Glossary</h2>
+      <table>
+        <thead>
+          <tr><th>Term</th><th>Definition</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Autoencoder (AE)</strong></td><td>Neural network pair (encoder + decoder) that compresses and reconstructs data.</td></tr>
+          <tr><td><strong>VAE</strong></td><td>Variational Autoencoder — an AE with a probabilistic latent distribution.</td></tr>
+          <tr><td><strong>Latent Space</strong></td><td>Low-dimensional space where the encoder maps images.</td></tr>
+          <tr><td><strong>Manifold</strong></td><td>Curved, lower-dimensional surface embedded in a higher-dimensional space.</td></tr>
+          <tr><td><strong>Reconstruction Error (ε)</strong></td><td>Distance between an image and its encode→decode output.</td></tr>
+          <tr><td><strong>LDM</strong></td><td>Latent Diffusion Model (e.g., Stable Diffusion).</td></tr>
+          <tr><td><strong>LPIPS</strong></td><td>Learned Perceptual Image Patch Similarity — a perceptual distance metric.</td></tr>
+          <tr><td><strong>DIRE</strong></td><td>Diffusion Reconstruction Error — alternative detector inverting the diffusion process.</td></tr>
+          <tr><td><strong>AEROBLADE</strong></td><td>CVPR 2024 paper that popularized the latent-manifold detection method.</td></tr>
+          <tr><td><strong>Threshold (τ)</strong></td><td>Cut-off value on reconstruction error used to classify real vs generated.</td></tr>
+          <tr><td><strong>AUC</strong></td><td>Area Under ROC Curve — summary metric for binary classifier quality.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <footer>
+      <p>
+        Built as a comprehensive reference on latent-manifold-based AI image detection.<br>
+        Primary source: AEROBLADE (Ricker et al., CVPR 2024). Use <span class="kbd">Ctrl</span>+<span class="kbd">F</span> to search terms.
+      </p>
+    </footer>
+  </main>
+</div>
+
+<script>
+  // Active nav highlighting via scroll spy
+  const sections = document.querySelectorAll("section[id]");
+  const navLinks = document.querySelectorAll(".nav-link");
+
+  function setActive() {
+    let current = "";
+    const scrollY = window.scrollY + 120;
+    sections.forEach(sec => {
+      if (sec.offsetTop <= scrollY) current = sec.id;
+    });
+    navLinks.forEach(link => {
+      link.classList.remove("active");
+      if (link.getAttribute("href") === "#" + current) link.classList.add("active");
+    });
+  }
+
+  window.addEventListener("scroll", setActive, { passive: true });
+  setActive();
+</script>
+</body>
+</html>

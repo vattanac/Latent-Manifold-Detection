@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Latent Manifold Detection — Visualizations</title>
+<style>
+  :root {
+    --bg-0: #0a0b10;
+    --bg-1: #11131c;
+    --bg-2: #171a26;
+    --border: rgba(255, 255, 255, 0.08);
+    --text-0: #f4f5f8;
+    --text-1: #c9ccd6;
+    --text-2: #8a8fa0;
+    --accent: #7c5cff;
+    --accent-2: #22d3ee;
+    --accent-3: #f472b6;
+    --success: #34d399;
+    --danger: #f87171;
+    --warning: #fbbf24;
+    --font-sans: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
+    --font-mono: "SF Mono", "JetBrains Mono", "Fira Code", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: var(--font-sans);
+    background: var(--bg-0);
+    color: var(--text-1);
+    line-height: 1.6;
+    padding: 40px 20px;
+    min-height: 100vh;
+    background-image:
+      radial-gradient(800px circle at 15% 10%, rgba(124, 92, 255, 0.12), transparent 40%),
+      radial-gradient(700px circle at 85% 80%, rgba(34, 211, 238, 0.08), transparent 40%);
+  }
+  .container { max-width: 1100px; margin: 0 auto; }
+  h1 {
+    font-size: 36px;
+    color: var(--text-0);
+    margin-bottom: 10px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2), var(--accent-3));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-weight: 800;
+  }
+  .lead { color: var(--text-2); margin-bottom: 32px; font-size: 16px; }
+  h2 {
+    color: var(--text-0);
+    font-size: 22px;
+    margin: 40px 0 16px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  h2::before {
+    content: "";
+    width: 4px;
+    height: 22px;
+    background: linear-gradient(180deg, var(--accent), var(--accent-2));
+    border-radius: 2px;
+  }
+  .card {
+    background: rgba(23, 26, 38, 0.6);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 28px;
+    margin-bottom: 20px;
+    backdrop-filter: blur(10px);
+  }
+  .caption {
+    color: var(--text-2);
+    font-size: 14px;
+    margin-top: 14px;
+    font-style: italic;
+    text-align: center;
+  }
+  .legend {
+    display: flex;
+    gap: 22px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-top: 16px;
+    font-size: 13px;
+  }
+  .legend-item { display: flex; align-items: center; gap: 8px; }
+  .dot { width: 12px; height: 12px; border-radius: 50%; }
+  .dot.real { background: var(--danger); box-shadow: 0 0 8px var(--danger); }
+  .dot.fake { background: var(--success); box-shadow: 0 0 8px var(--success); }
+  .dot.recon { background: var(--accent-2); box-shadow: 0 0 8px var(--accent-2); }
+  svg { width: 100%; height: auto; display: block; }
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  @media (max-width: 780px) { .grid-2 { grid-template-columns: 1fr; } }
+  code {
+    font-family: var(--font-mono);
+    background: rgba(255,255,255,0.06);
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 13px;
+    color: var(--accent-2);
+  }
+  .score-bar {
+    display: flex;
+    height: 36px;
+    border-radius: 8px;
+    overflow: hidden;
+    margin: 10px 0;
+    border: 1px solid var(--border);
+  }
+  .score-seg {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+    color: white;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <h1>Latent Manifold Detection — Visual Examples</h1>
+  <p class="lead">
+    Five visualizations illustrating how autoencoder reconstruction error separates
+    real photographs from AI-generated images.
+  </p>
+
+  <!-- =================================================================== -->
+  <h2>1. The Manifold Concept</h2>
+  <div class="card">
+    <svg viewBox="0 0 900 420" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="manifoldGrad" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#7c5cff" stop-opacity="0.9"/>
+          <stop offset="50%" stop-color="#22d3ee" stop-opacity="0.9"/>
+          <stop offset="100%" stop-color="#f472b6" stop-opacity="0.9"/>
+        </linearGradient>
+        <filter id="glow">
+          <feGaussianBlur stdDeviation="3" result="blur"/>
+          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+
+      <!-- Axes -->
+      <line x1="60" y1="380" x2="840" y2="380" stroke="#3a3f52" stroke-width="1.5"/>
+      <line x1="60" y1="40" x2="60" y2="380" stroke="#3a3f52" stroke-width="1.5"/>
+      <text x="840" y="400" fill="#8a8fa0" font-size="13" text-anchor="end">image dimension 1</text>
+      <text x="50" y="40" fill="#8a8fa0" font-size="13" text-anchor="end" transform="rotate(-90 50 40)">image dimension 2</text>
+
+      <!-- The manifold (curvy surface the decoder can produce) -->
+      <path d="M 100 310 Q 250 140, 450 200 T 820 130"
+            fill="none" stroke="url(#manifoldGrad)" stroke-width="6" stroke-linecap="round" filter="url(#glow)"/>
+      <text x="450" y="100" fill="#22d3ee" font-size="16" font-weight="700" text-anchor="middle">
+        The Manifold — all images D(z) the decoder can produce
+      </text>
+
+      <!-- Generated images ON the manifold -->
+      <circle cx="180" cy="253" r="8" fill="#34d399" filter="url(#glow)"/>
+      <circle cx="310" cy="188" r="8" fill="#34d399" filter="url(#glow)"/>
+      <circle cx="450" cy="200" r="8" fill="#34d399" filter="url(#glow)"/>
+      <circle cx="580" cy="180" r="8" fill="#34d399" filter="url(#glow)"/>
+      <circle cx="720" cy="150" r="8" fill="#34d399" filter="url(#glow)"/>
+
+      <!-- Real images OFF the manifold -->
+      <circle cx="220" cy="330" r="8" fill="#f87171" filter="url(#glow)"/>
+      <circle cx="400" cy="280" r="8" fill="#f87171" filter="url(#glow)"/>
+      <circle cx="550" cy="290" r="8" fill="#f87171" filter="url(#glow)"/>
+      <circle cx="680" cy="240" r="8" fill="#f87171" filter="url(#glow)"/>
+      <circle cx="350" cy="360" r="8" fill="#f87171" filter="url(#glow)"/>
+
+      <!-- Projection arrows (real → manifold) -->
+      <line x1="220" y1="330" x2="205" y2="258" stroke="#f87171" stroke-width="1.5" stroke-dasharray="3,3" opacity="0.6"/>
+      <line x1="400" y1="280" x2="410" y2="205" stroke="#f87171" stroke-width="1.5" stroke-dasharray="3,3" opacity="0.6"/>
+      <line x1="550" y1="290" x2="550" y2="193" stroke="#f87171" stroke-width="1.5" stroke-dasharray="3,3" opacity="0.6"/>
+
+      <text x="420" y="355" fill="#f87171" font-size="13" font-weight="600">← reconstruction error (distance to manifold)</text>
+    </svg>
+    <div class="legend">
+      <div class="legend-item"><span class="dot fake"></span>Generated image — lies ON the manifold</div>
+      <div class="legend-item"><span class="dot real"></span>Real photograph — lies OFF the manifold</div>
+    </div>
+    <p class="caption">
+      Real photos contain detail the decoder cannot represent. Generated images are produced BY the decoder, so they already sit on the surface.
+    </p>
+  </div>
+
+  <!-- =================================================================== -->
+  <h2>2. Encode → Decode Pipeline</h2>
+  <div class="card">
+    <svg viewBox="0 0 900 260" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="boxGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#1e2230"/>
+          <stop offset="100%" stop-color="#171a26"/>
+        </linearGradient>
+        <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#7c5cff"/>
+        </marker>
+      </defs>
+
+      <!-- Input image box -->
+      <rect x="30" y="90" width="130" height="100" rx="10" fill="url(#boxGrad)" stroke="#7c5cff" stroke-width="2"/>
+      <text x="95" y="125" fill="#f4f5f8" font-size="14" font-weight="700" text-anchor="middle">Input</text>
+      <text x="95" y="145" fill="#8a8fa0" font-size="12" text-anchor="middle">x</text>
+      <text x="95" y="165" fill="#8a8fa0" font-size="11" text-anchor="middle">512×512×3</text>
+
+      <!-- Encoder -->
+      <polygon points="180,100 280,120 280,160 180,180" fill="url(#boxGrad)" stroke="#22d3ee" stroke-width="2"/>
+      <text x="230" y="145" fill="#22d3ee" font-size="14" font-weight="700" text-anchor="middle">E</text>
+      <text x="230" y="210" fill="#8a8fa0" font-size="11" text-anchor="middle">encoder</text>
+
+      <!-- Latent box -->
+      <rect x="300" y="110" width="90" height="60" rx="8" fill="url(#boxGrad)" stroke="#f472b6" stroke-width="2"/>
+      <text x="345" y="140" fill="#f4f5f8" font-size="13" font-weight="700" text-anchor="middle">z</text>
+      <text x="345" y="158" fill="#8a8fa0" font-size="10" text-anchor="middle">64×64×4</text>
+
+      <!-- Decoder -->
+      <polygon points="410,120 510,100 510,180 410,160" fill="url(#boxGrad)" stroke="#22d3ee" stroke-width="2"/>
+      <text x="460" y="145" fill="#22d3ee" font-size="14" font-weight="700" text-anchor="middle">D</text>
+      <text x="460" y="210" fill="#8a8fa0" font-size="11" text-anchor="middle">decoder</text>
+
+      <!-- Reconstruction box -->
+      <rect x="530" y="90" width="130" height="100" rx="10" fill="url(#boxGrad)" stroke="#7c5cff" stroke-width="2"/>
+      <text x="595" y="125" fill="#f4f5f8" font-size="14" font-weight="700" text-anchor="middle">Reconstruction</text>
+      <text x="595" y="145" fill="#8a8fa0" font-size="12" text-anchor="middle">x̂ = D(E(x))</text>
+      <text x="595" y="165" fill="#8a8fa0" font-size="11" text-anchor="middle">512×512×3</text>
+
+      <!-- Distance -->
+      <rect x="680" y="90" width="180" height="100" rx="10" fill="url(#boxGrad)" stroke="#f472b6" stroke-width="2"/>
+      <text x="770" y="120" fill="#f472b6" font-size="13" font-weight="700" text-anchor="middle">Distance metric</text>
+      <text x="770" y="145" fill="#f4f5f8" font-size="16" font-weight="700" text-anchor="middle">S(x) = d(x, x̂)</text>
+      <text x="770" y="170" fill="#8a8fa0" font-size="11" text-anchor="middle">LPIPS / L2 / SSIM</text>
+
+      <!-- Arrows -->
+      <line x1="160" y1="140" x2="175" y2="140" stroke="#7c5cff" stroke-width="2" marker-end="url(#arrow)"/>
+      <line x1="282" y1="140" x2="297" y2="140" stroke="#7c5cff" stroke-width="2" marker-end="url(#arrow)"/>
+      <line x1="392" y1="140" x2="407" y2="140" stroke="#7c5cff" stroke-width="2" marker-end="url(#arrow)"/>
+      <line x1="513" y1="140" x2="528" y2="140" stroke="#7c5cff" stroke-width="2" marker-end="url(#arrow)"/>
+      <line x1="662" y1="140" x2="677" y2="140" stroke="#7c5cff" stroke-width="2" marker-end="url(#arrow)"/>
+
+      <text x="440" y="55" fill="#f4f5f8" font-size="16" font-weight="700" text-anchor="middle">
+        S(x) = d(x, D(E(x)))
+      </text>
+      <text x="440" y="75" fill="#8a8fa0" font-size="12" text-anchor="middle">
+        the reconstruction-distance score
+      </text>
+    </svg>
+    <p class="caption">The whole detector in one diagram: encode, decode, measure the difference.</p>
+  </div>
+
+  <!-- =================================================================== -->
+  <h2>3. Score Distributions — What You See in Practice</h2>
+  <div class="card">
+    <svg viewBox="0 0 900 360" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="fakeFill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#34d399" stop-opacity="0.6"/>
+          <stop offset="100%" stop-color="#34d399" stop-opacity="0.1"/>
+        </linearGradient>
+        <linearGradient id="realFill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#f87171" stop-opacity="0.6"/>
+          <stop offset="100%" stop-color="#f87171" stop-opacity="0.1"/>
+        </linearGradient>
+      </defs>
+
+      <!-- Axes -->
+      <line x1="70" y1="300" x2="860" y2="300" stroke="#3a3f52" stroke-width="1.5"/>
+      <line x1="70" y1="40" x2="70" y2="300" stroke="#3a3f52" stroke-width="1.5"/>
+
+      <!-- X ticks -->
+      <g font-size="11" fill="#8a8fa0" text-anchor="middle">
+        <text x="70" y="320">0.00</text>
+        <text x="227" y="320">0.10</text>
+        <text x="385" y="320">0.20</text>
+        <text x="543" y="320">0.30</text>
+        <text x="700" y="320">0.40</text>
+        <text x="858" y="320">0.50</text>
+      </g>
+      <text x="465" y="345" fill="#c9ccd6" font-size="13" text-anchor="middle">LPIPS reconstruction score S(x)</text>
+      <text x="45" y="170" fill="#c9ccd6" font-size="13" text-anchor="middle" transform="rotate(-90 45 170)">density</text>
+
+      <!-- Fake (generated) distribution — centered around 0.08 -->
+      <path d="M 70 300
+               C 130 300, 150 120, 195 80
+               C 230 55, 260 55, 290 100
+               C 320 150, 340 300, 400 300 Z"
+            fill="url(#fakeFill)" stroke="#34d399" stroke-width="2"/>
+
+      <!-- Real distribution — centered around 0.28 -->
+      <path d="M 320 300
+               C 400 300, 440 140, 510 80
+               C 550 50, 600 55, 640 110
+               C 680 170, 720 300, 800 300 Z"
+            fill="url(#realFill)" stroke="#f87171" stroke-width="2"/>
+
+      <!-- Threshold line -->
+      <line x1="360" y1="40" x2="360" y2="300" stroke="#fbbf24" stroke-width="2" stroke-dasharray="6,4"/>
+      <text x="365" y="55" fill="#fbbf24" font-size="12" font-weight="700">τ ≈ 0.18</text>
+      <text x="365" y="70" fill="#fbbf24" font-size="11">threshold</text>
+
+      <!-- Labels -->
+      <text x="215" y="65" fill="#34d399" font-size="13" font-weight="700" text-anchor="middle">Generated</text>
+      <text x="215" y="80" fill="#8a8fa0" font-size="11" text-anchor="middle">μ ≈ 0.08</text>
+
+      <text x="555" y="65" fill="#f87171" font-size="13" font-weight="700" text-anchor="middle">Real photos</text>
+      <text x="555" y="80" fill="#8a8fa0" font-size="11" text-anchor="middle">μ ≈ 0.28</text>
+
+      <!-- Classify arrows -->
+      <text x="200" y="275" fill="#34d399" font-size="11" text-anchor="middle" font-weight="600">classify as GENERATED</text>
+      <text x="570" y="275" fill="#f87171" font-size="11" text-anchor="middle" font-weight="600">classify as REAL</text>
+    </svg>
+    <p class="caption">Typical separation you get on in-distribution data. The overlap region is where calibration matters.</p>
+  </div>
+
+  <!-- =================================================================== -->
+  <h2>4. Reconstruction Error Maps — Where the Signal Lives</h2>
+  <div class="grid-2">
+    <div class="card">
+      <svg viewBox="0 0 400 280" xmlns="http://www.w3.org/2000/svg">
+        <!-- Real photo simulation: portrait with hair + textured background -->
+        <defs>
+          <radialGradient id="realErr" cx="0.5" cy="0.45">
+            <stop offset="0%" stop-color="#f87171" stop-opacity="0.0"/>
+            <stop offset="40%" stop-color="#f87171" stop-opacity="0.3"/>
+            <stop offset="100%" stop-color="#f87171" stop-opacity="0.9"/>
+          </radialGradient>
+        </defs>
+        <rect x="20" y="20" width="360" height="240" fill="#1e2230" rx="8"/>
+
+        <!-- "Hair/foliage hot spots" -->
+        <circle cx="110" cy="80" r="35" fill="#f87171" opacity="0.8"/>
+        <circle cx="140" cy="110" r="30" fill="#fbbf24" opacity="0.7"/>
+        <circle cx="80" cy="130" r="28" fill="#f87171" opacity="0.75"/>
+        <circle cx="290" cy="70" r="40" fill="#f87171" opacity="0.8"/>
+        <circle cx="320" cy="110" r="28" fill="#fbbf24" opacity="0.7"/>
+        <circle cx="260" cy="200" r="45" fill="#f87171" opacity="0.7"/>
+        <circle cx="180" cy="220" r="25" fill="#fbbf24" opacity="0.6"/>
+        <circle cx="200" cy="160" r="30" fill="#f472b6" opacity="0.4"/>
+
+        <text x="200" y="45" fill="#f4f5f8" font-size="15" font-weight="700" text-anchor="middle">REAL PHOTO — residual |x − x̂|</text>
+      </svg>
+      <div class="legend">
+        <div class="legend-item"><span class="dot real"></span>hot = large error</div>
+      </div>
+      <p class="caption">Error concentrates in hair, skin texture, foliage, text, and micro-edges — detail the VAE cannot reproduce.</p>
+    </div>
+
+    <div class="card">
+      <svg viewBox="0 0 400 280" xmlns="http://www.w3.org/2000/svg">
+        <rect x="20" y="20" width="360" height="240" fill="#1e2230" rx="8"/>
+        <!-- Small scattered low-intensity spots -->
+        <circle cx="90" cy="80" r="18" fill="#22d3ee" opacity="0.25"/>
+        <circle cx="200" cy="120" r="15" fill="#22d3ee" opacity="0.2"/>
+        <circle cx="310" cy="90" r="20" fill="#22d3ee" opacity="0.25"/>
+        <circle cx="150" cy="200" r="17" fill="#22d3ee" opacity="0.2"/>
+        <circle cx="280" cy="210" r="14" fill="#22d3ee" opacity="0.2"/>
+        <circle cx="220" cy="160" r="12" fill="#22d3ee" opacity="0.15"/>
+
+        <text x="200" y="45" fill="#f4f5f8" font-size="15" font-weight="700" text-anchor="middle">GENERATED — residual |x − x̂|</text>
+      </svg>
+      <div class="legend">
+        <div class="legend-item"><span class="dot recon"></span>cold = near-zero error</div>
+      </div>
+      <p class="caption">Near-zero residual almost everywhere. The image already lives on the manifold.</p>
+    </div>
+  </div>
+
+  <!-- =================================================================== -->
+  <h2>5. Score Examples — Two Images Compared</h2>
+  <div class="card">
+    <p style="margin-bottom:16px;">A suspected photo and a suspected generation, with their scores on the LPIPS scale:</p>
+
+    <div style="margin-bottom: 22px;">
+      <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:4px;">
+        <span style="color:var(--danger); font-weight:700;">📷 Photograph of a dog</span>
+        <span><code>S(x) = 0.284</code> → REAL</span>
+      </div>
+      <div class="score-bar">
+        <div class="score-seg" style="background:#f87171; width:57%;">0.284</div>
+        <div class="score-seg" style="background:#2a2e3d; width:43%;"></div>
+      </div>
+    </div>
+
+    <div style="margin-bottom: 22px;">
+      <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:4px;">
+        <span style="color:var(--success); font-weight:700;">✨ Stable-Diffusion output</span>
+        <span><code>S(x) = 0.079</code> → GENERATED</span>
+      </div>
+      <div class="score-bar">
+        <div class="score-seg" style="background:#34d399; width:16%;">0.079</div>
+        <div class="score-seg" style="background:#2a2e3d; width:84%;"></div>
+      </div>
+    </div>
+
+    <!-- Threshold bar -->
+    <div style="position:relative; height: 50px; margin-top: 28px; border-top: 1px solid var(--border); padding-top: 10px;">
+      <div style="position:absolute; left:0; font-size:11px; color:var(--text-2);">0.00</div>
+      <div style="position:absolute; left:36%; font-size:11px; color:var(--warning); font-weight:700;">↑ threshold τ = 0.18</div>
+      <div style="position:absolute; right:0; font-size:11px; color:var(--text-2);">0.50</div>
+    </div>
+    <p class="caption">A threshold of 0.18 cleanly separates these two examples. In real deployments you calibrate τ on a validation set using the ROC curve.</p>
+  </div>
+
+  <div style="margin-top: 40px; padding: 20px; text-align: center; color: var(--text-2); font-size: 13px; border-top: 1px solid var(--border);">
+    Visualizations for the AI-Generated Image Detection guide • method: AEROBLADE (Ricker et al., CVPR 2024)
+  </div>
+</div>
+</body>
+</html>
