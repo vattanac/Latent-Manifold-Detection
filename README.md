@@ -12,13 +12,16 @@ Open the guide directly in any modern browser:
 
 ```bash
 # Option 1: Double-click the file
-ai-image-detection-guide.html
+index.html
 
 # Option 2: Open from terminal
-open ai-image-detection-guide.html      # macOS
-xdg-open ai-image-detection-guide.html  # Linux
-start ai-image-detection-guide.html     # Windows
+open index.html      # macOS
+xdg-open index.html  # Linux
+start index.html     # Windows
 ```
+
+From the landing page, click the **"View Visualizations"** button in the hero section
+to jump into the interactive diagrams (`visualization.html`).
 
 No server, no build step, no dependencies. Everything is inlined.
 
@@ -140,6 +143,22 @@ Related work: DIRE (Wang et al., ICCV 2023), CNNDetect (Wang et al., CVPR 2020),
 
 ---
 
+## Visualizations Page
+
+A companion file, `visualization.html`, complements the main guide with five
+standalone SVG diagrams that illustrate the core ideas visually:
+
+1. **The Manifold Concept** — real vs. generated points around a curved manifold, with dashed arrows showing reconstruction distance.
+2. **Encode → Decode Pipeline** — the full `S(x) = d(x, D(E(x)))` flow as labeled boxes.
+3. **Score Distributions** — overlapping density curves for real and generated images with the decision threshold τ.
+4. **Reconstruction Error Maps** — side-by-side residual heatmaps highlighting where the signal concentrates on real vs. generated images.
+5. **Score Examples** — worked examples showing how two sample scores fall on either side of the threshold.
+
+You can open `visualization.html` directly, or click the **"View Visualizations"**
+button at the top of `index.html`.
+
+---
+
 ## Features of the Guide
 
 - **Modern UI** — Dark glassmorphism theme with gradient accents (purple → cyan → pink)
@@ -176,9 +195,10 @@ For production deployments, **combine this detector with a CLIP-based classifier
 ## File Structure
 
 ```
-outputs/
-├── ai-image-detection-guide.html   # The interactive guide (open this)
-└── README.md                        # This file
+Latent-Manifold-Detection/
+├── index.html           # The interactive guide (open this)
+├── visualization.html   # Five SVG visualizations of the core ideas
+└── README.md            # This file
 ```
 
 ---
